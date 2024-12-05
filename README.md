@@ -1,5 +1,4 @@
 # Debias-Positivity-Call
-Determining vaccine responders using single-cell assays and paired control samples
 
 In vaccine studies, determining whether participants mount an immune response is a critical objective. Cellular immune responses are commonly assessed using single-cell assays such as intracellular cytokine staining (ICS) and B-cell phenotyping (BCP). These assays help profile immune cell phenotypes and cytokine production before and after vaccination. However, assay variations (e.g., batch effects) between time points can result in misclassification of vaccine responders.
 
