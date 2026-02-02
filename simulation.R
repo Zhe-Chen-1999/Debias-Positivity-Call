@@ -164,7 +164,7 @@ res_summary = res_all %>%
     power_unadj = mean((responder_status==1) & (unadj_p_value < 0.05)),
     
     # Maximally adjusted p-value (valid: type I error <= alpha)
-    typeIerror_bb = mean((responder_status==0) & (berger_boos_p_value < 0.04)),
+    typeIerror_bb = mean((responder_status==0) & (berger_boos_p_value < 0.05)),
     power_bb = mean((responder_status==1) & (berger_boos_p_value < 0.05)),
     
     # Minimally adjusted p-value
