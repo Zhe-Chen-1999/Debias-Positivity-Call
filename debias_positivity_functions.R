@@ -139,8 +139,7 @@ CI_two_param_sep <- function(alpha = 0.05, n0 = 8, N0 = 93883, n1 = 43, N1 = 212
 
 
 # One-sided p-values for all combinations of misclassification rates within the confidence set
-calc_pregion <- function(cis, n0 = 31, N0 = 69540, n1 = 85, N1 = 93562, 
-                         alpha = 0.05){
+calc_pregion <- function(cis, n0 = 31, N0 = 69540, n1 = 85, N1 = 93562){
   pvals = data.frame()
   for (i in 1:nrow(cis)) {
     if(any(is.na(cis[i,]))){
@@ -179,7 +178,7 @@ calc_pregion <- function(cis, n0 = 31, N0 = 69540, n1 = 85, N1 = 93562,
 
 adjust_pval <- function(n00 = 8, N00 = 93883, n10 = 43, N10 = 212650,
                         n0 = 31, N0 = 69540, n1 = 85, N1 = 93562,
-                        alpha = 0.01, negative = FALSE) {
+                        alpha = 0.01) {
   
   # Unadjusted p-value ignoring misclassification
   primary_p = 1 - pnorm(test.stat(n0, N0, n1, N1, 
@@ -188,7 +187,7 @@ adjust_pval <- function(n00 = 8, N00 = 93883, n10 = 43, N10 = 212650,
   
   # Assuming p_B.fn = p_V.fn 
   cis = CI_three_param(alpha = alpha, n00, N00, n10, N10)
-  pval_set = calc_pregion(cis, n0, N0, n1, N1, alpha = 0.05-alpha)
+  pval_set = calc_pregion(cis, n0, N0, n1, N1)
   pval_set = pval_set %>%
     filter(!is.nan(pval)) %>%
     filter(!is.na(pval))
@@ -201,7 +200,7 @@ adjust_pval <- function(n00 = 8, N00 = 93883, n10 = 43, N10 = 212650,
                  ifelse(primary_p < min_p, min_p, max_p))
   
   # Maximally adjusted p-value: usual Berger and Boos approach
-  p_adj_BB = max_p
+  p_adj_BB = max_p + alpha
   
   return(list(p_unadj = primary_p,
               p_adj = p_adj,
