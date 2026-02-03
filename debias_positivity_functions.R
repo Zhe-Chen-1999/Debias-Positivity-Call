@@ -178,33 +178,40 @@ calc_pregion <- function(cis, n0 = 31, N0 = 69540, n1 = 85, N1 = 93562){
 
 adjust_pval <- function(n00 = 8, N00 = 93883, n10 = 43, N10 = 212650,
                         n0 = 31, N0 = 69540, n1 = 85, N1 = 93562,
-                        alpha = 0.01) {
+                        alpha = 0.05, alpha_prime = 0.01) {
   
   # Unadjusted p-value ignoring misclassification
   primary_p = 1 - pnorm(test.stat(n0, N0, n1, N1, 
                                   p_B.fp = 0, p_B.fn = 0, 
                                   p_V.fp = 0, p_V.fn=0))
   
-  # Assuming p_B.fn = p_V.fn 
-  cis = CI_three_param(alpha = alpha, n00, N00, n10, N10)
-  pval_set = calc_pregion(cis, n0, N0, n1, N1)
-  pval_set = pval_set %>%
+  # Maximally adjusted p-value: usual Berger and Boos approach
+  ci_alpha_prime = CI_three_param(alpha = alpha_prime, n00, N00, n10, N10) # Assuming p_B.fn = p_V.fn 
+  
+  pval_set_alpha_prime = calc_pregion(ci_alpha_prime, n0, N0, n1, N1)
+  pval_set_alpha_prime = pval_set_alpha_prime %>%
     filter(!is.nan(pval)) %>%
     filter(!is.na(pval))
-
-  min_p = min(pval_set$pval)
-  max_p = max(pval_set$pval)
+ 
+  p_adj_maximum = max(pval_set_alpha_prime$pval) + alpha_prime
   
   # Minimally adjusted p-value
-  p_adj = ifelse((primary_p >= min_p) & (primary_p <= max_p), primary_p,
-                 ifelse(primary_p < min_p, min_p, max_p))
+  ci_alpha = CI_three_param(alpha = alpha, n00, N00, n10, N10)
   
-  # Maximally adjusted p-value: usual Berger and Boos approach
-  p_adj_BB = max_p + alpha
+  pval_set_alpha = calc_pregion(ci_alpha, n0, N0, n1, N1)
+  pval_set_alpha = pval_set_alpha %>%
+    filter(!is.nan(pval)) %>%
+    filter(!is.na(pval))
+  
+  max_p = max(pval_set_alpha$pval)
+  min_p = min(pval_set_alpha$pval)
+  p_adj_minimal = ifelse((primary_p >= min_p) & (primary_p <= max_p), primary_p,
+                         ifelse(primary_p < min_p, min_p, max_p))
   
   return(list(p_unadj = primary_p,
-              p_adj = p_adj,
-              p_adj_BB = p_adj_BB))
+              p_adj_minimal = p_adj_minimal,
+              p_adj_maximum = p_adj_maximum))
 }
+
 
 
