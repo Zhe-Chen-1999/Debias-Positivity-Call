@@ -70,7 +70,7 @@ simulate_trial <- function(N1, N0, N10, N00,
   # p-value calculated ignoring misclassification/adjusting for control samples
   res = adjust_pval(n00, N00, n10, N10,
                     n0, N0, n1, N1,
-                    alpha = par_ci_alpha, negative = FALSE) 
+                    alpha = 0.05, alpha_prime = par_ci_alpha) 
   
   # p-value calculated using the true misclassification rates
   true_p_value = 1 - pnorm(test.stat(n0, N0, n1, N1, 
