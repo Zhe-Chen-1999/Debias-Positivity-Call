@@ -192,8 +192,13 @@ adjust_pval <- function(n00 = 8, N00 = 93883, n10 = 43, N10 = 212650,
   pval_set_alpha_prime = pval_set_alpha_prime %>%
     filter(!is.nan(pval)) %>%
     filter(!is.na(pval))
- 
-  p_adj_maximum = max(pval_set_alpha_prime$pval) + alpha_prime
+  
+  if(nrow(pval_set_alpha_prime)==0){
+    p_adj_maximum = NA
+  }else{
+    p_adj_maximum = max(pval_set_alpha_prime$pval) + alpha_prime
+    p_adj_maximum = min(p_adj_maximum, 1)
+  }
   
   # Minimally adjusted p-value
   ci_alpha = CI_three_param(alpha = alpha, n00, N00, n10, N10)
