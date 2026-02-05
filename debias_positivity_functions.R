@@ -73,9 +73,22 @@ CI_three_param <- function(alpha = 0.05, n0 = 8, N0 = 93883, n1 = 43,
   
   ci = data.frame()
   
-  for (p_B.fp in seq(0, n0/N0-1e-6, length.out = nstep)) { # p_B.obs - p_B.fp > 0
-    for (p_V.fp in seq(0, n1/N1-1e-6, length.out = nstep)) { # p_V.obs - p_V.fp > 0
-      for (p_B.fn in seq(0, min(1-n0/N0, 1 - n1/N1) - 1e-6, length.out = nstep)){  
+  # Define safe upper bounds to prevent negative sequence limits
+  # If n0 or n1 is 0, the upper bound becomes 0.
+  get_seq <- function(limit, steps) {
+    if (limit <= 0) return(0) 
+    return(seq(0, limit, length.out = steps))
+  }
+
+  # Define the grids
+  p_B.fp_seq <- get_seq(n0/N0 - 1e-6, nstep)
+  p_V.fp_seq <- get_seq(n1/N1 - 1e-6, nstep)
+  p_B.fn_seq <- get_seq(min(1 - n0/N0, 1 - n1/N1) - 1e-6, nstep)
+  
+  for (p_B.fp in p_B.fp_seq) { # p_B.obs - p_B.fp > 0
+    for (p_V.fp in p_V.fp_seq) { # p_V.obs - p_V.fp > 0
+      for (p_B.fn in p_B.fn_seq){
+        
           test_stat = test.stat(n0, N0, n1, N1, p_B.fp, p_B.fn, p_V.fp, p_B.fn)
           
           if(is.nan(test_stat)){
@@ -180,43 +193,61 @@ adjust_pval <- function(n00 = 8, N00 = 93883, n10 = 43, N10 = 212650,
                         n0 = 31, N0 = 69540, n1 = 85, N1 = 93562,
                         alpha = 0.05, alpha_prime = 0.01) {
   
-  # Unadjusted p-value ignoring misclassification
-  primary_p = 1 - pnorm(test.stat(n0, N0, n1, N1, 
-                                  p_B.fp = 0, p_B.fn = 0, 
-                                  p_V.fp = 0, p_V.fn=0))
-  
-  # Maximally adjusted p-value: usual Berger and Boos approach
-  ci_alpha_prime = CI_three_param(alpha = alpha_prime, n00, N00, n10, N10) # Assuming p_B.fn = p_V.fn 
-  
-  pval_set_alpha_prime = calc_pregion(ci_alpha_prime, n0, N0, n1, N1)
-  pval_set_alpha_prime = pval_set_alpha_prime %>%
-    filter(!is.nan(pval)) %>%
-    filter(!is.na(pval))
-  
-  if(nrow(pval_set_alpha_prime)==0){
-    p_adj_maximum = NA
+  if(n0 == 0 & n1 == 0){ # test stat = c'/sqrt(-c) or 0/0 = NaN -> pval = NA ## This person does not show any response at T1 (compared to the paired control)
+    primary_p = 1
+    p_adj_maximum = 1
+    p_adj_minimal = 1
+  }else if(n00 == 0 & n10 == 0){ # test stats inverting for nuisance CI = 0/0 = NaN -> CI = NA -> pvals = NA ## perfect assay with zero misclassification rates (no observed positive -> false positive rates = 0 & assume perfect negative control:no true positive in the negative control -> false negative rates = 0 )
+    # Unadjusted p-value ignoring misclassification
+    primary_p = 1 - pnorm(test.stat(n0, N0, n1, N1, 
+                                    p_B.fp = 0, p_B.fn = 0, 
+                                    p_V.fp = 0, p_V.fn=0))
+    p_adj_maximum = primary_p
+    p_adj_minimal = primary_p
   }else{
-    p_adj_maximum = max(pval_set_alpha_prime$pval) + alpha_prime
-    p_adj_maximum = min(p_adj_maximum, 1)
+    # Unadjusted p-value ignoring misclassification
+    primary_p = 1 - pnorm(test.stat(n0, N0, n1, N1, 
+                                    p_B.fp = 0, p_B.fn = 0, 
+                                    p_V.fp = 0, p_V.fn=0))
+    
+    # Maximally adjusted p-value: usual Berger and Boos approach
+    ci_alpha_prime = CI_three_param(alpha = alpha_prime, n00, N00, n10, N10) # Assuming p_B.fn = p_V.fn 
+    pval_set_alpha_prime = calc_pregion(ci_alpha_prime, n0, N0, n1, N1)
+    pval_set_alpha_prime = pval_set_alpha_prime %>%
+      filter(!is.nan(pval)) %>%
+      filter(!is.na(pval))
+    
+    if(nrow(pval_set_alpha_prime)==0){
+      p_adj_maximum = NA
+    }else{
+      p_adj_maximum = max(pval_set_alpha_prime$pval) + alpha_prime
+      p_adj_maximum = min(p_adj_maximum, 1)
+    }
+    
+    # Minimally adjusted p-value
+    ci_alpha = CI_three_param(alpha = alpha, n00, N00, n10, N10)
+    pval_set_alpha = calc_pregion(ci_alpha, n0, N0, n1, N1)
+    pval_set_alpha = pval_set_alpha %>%
+      filter(!is.nan(pval)) %>%
+      filter(!is.na(pval))
+    
+    if(nrow(pval_set_alpha)==0){
+      p_adj_minimal = NA
+    }else{
+      max_p = max(pval_set_alpha$pval)
+      min_p = min(pval_set_alpha$pval)
+      p_adj_minimal = ifelse((primary_p >= min_p) & (primary_p <= max_p), primary_p,
+                             ifelse(primary_p < min_p, min_p, max_p))
+    }
   }
-  
-  # Minimally adjusted p-value
-  ci_alpha = CI_three_param(alpha = alpha, n00, N00, n10, N10)
-  
-  pval_set_alpha = calc_pregion(ci_alpha, n0, N0, n1, N1)
-  pval_set_alpha = pval_set_alpha %>%
-    filter(!is.nan(pval)) %>%
-    filter(!is.na(pval))
-  
-  max_p = max(pval_set_alpha$pval)
-  min_p = min(pval_set_alpha$pval)
-  p_adj_minimal = ifelse((primary_p >= min_p) & (primary_p <= max_p), primary_p,
-                         ifelse(primary_p < min_p, min_p, max_p))
   
   return(list(p_unadj = primary_p,
               p_adj_minimal = p_adj_minimal,
               p_adj_maximum = p_adj_maximum))
 }
+
+
+
 
 
 
